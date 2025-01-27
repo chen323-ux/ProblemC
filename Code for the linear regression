@@ -1,0 +1,52 @@
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+# Load the dataset
+url = 'https://raw.githubusercontent.com/chen323-ux/ProblemC/main/summerOly_medal_counts.csv'
+data = pd.read_csv(url)
+
+# Preprocess the data
+data = data[['Year', 'NOC', 'Gold', 'Silver', 'Bronze', 'Total']]
+data = data.groupby(['Year', 'NOC']).sum().reset_index()
+
+# Create a wide-format dataframe
+data_pivot = data.pivot(index='Year', columns='NOC', values=['Gold', 'Silver', 'Bronze', 'Total']).fillna(0)
+
+# Flatten the multi-index columns
+data_pivot.columns = ['_'.join(col).strip() for col in data_pivot.columns.values]
+
+# Prepare the training data
+X = data_pivot.index.values.reshape(-1, 1)
+y_gold = data_pivot.filter(like='Gold').values
+y_silver = data_pivot.filter(like='Silver').values
+y_bronze = data_pivot.filter(like='Bronze').values
+y_total = data_pivot.filter(like='Total').values
+
+# Create and train the linear regression models
+model_gold = LinearRegression().fit(X, y_gold)
+model_silver = LinearRegression().fit(X, y_silver)
+model_bronze = LinearRegression().fit(X, y_bronze)
+model_total = LinearRegression().fit(X, y_total)
+
+# Make predictions for the year 2028
+year_2028 = np.array([[2028]])
+pred_gold = model_gold.predict(year_2028).flatten()
+pred_silver = model_silver.predict(year_2028).flatten()
+pred_bronze = model_bronze.predict(year_2028).flatten()
+pred_total = model_total.predict(year_2028).flatten()
+
+# Extract country codes
+countries = [col.split('_')[1] for col in data_pivot.filter(like='Gold').columns]
+
+# Create the predictions dataframe
+predictions_df = pd.DataFrame({
+    'Country': countries,
+    'Gold': pred_gold,
+    'Silver': pred_silver,
+    'Bronze': pred_bronze,
+    'Total': pred_total
+})
+
+# Save the predictions to a CSV file
+predictions_df.to_csv('predicted_medal_counts_2028.csv', index=False)
