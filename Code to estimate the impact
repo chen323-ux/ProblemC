@@ -1,0 +1,27 @@
+# Filter the original dataframe for the top 3 countries
+top_country_names = top_countries.index.tolist()
+top_countries_df = df[df['Team'].isin(top_country_names)]
+
+# Aggregate medal counts by sport for each of the top countries
+sport_medal_counts = top_countries_df.pivot_table(index=['Team', 'Sport'], columns='Year', values='Medal', aggfunc=lambda x: (x == 'Gold').sum() + (x == 'Silver').sum() + (x == 'Bronze').sum())
+sport_medal_counts = sport_medal_counts.fillna(0)
+
+
+# Estimate the impact of investing in a great coach
+def estimate_impact(sport_medal_counts):
+    impact_estimates = {}
+    for (team, sport), counts in sport_medal_counts.iterrows():
+        counts = counts.values
+        slope = mann_kendall_test(counts)
+        current_count = counts[-1]
+        # Assuming a great coach can potentially increase the slope by 50%
+        potential_increase = slope * 0.5
+        future_count = current_count + potential_increase * len(counts)
+        impact_estimates[(team, sport)] = future_count - current_count
+    return impact_estimates
+
+impact_estimates = estimate_impact(sport_medal_counts)
+
+# Print the impact estimates for each sport in the top countries
+for (team, sport), impact in impact_estimates.items():
+    print(f"Country: {team}, Sport: {sport}, Estimated Impact: {impact:.2f}")
